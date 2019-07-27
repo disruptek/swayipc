@@ -279,15 +279,14 @@ proc recvMessage(comp: Compositor): Future[Receipt] {.async.} =
 			mkind: cast[MessageKind](msg.header.mtype))
 
 converter toJson(receipt: Receipt): JsonNode =
-	let data = receipt.data
+	var data = receipt.data
 
 	case data[0]:
-	of '{':
-		result = data.parseJson()
-	of '[':
-		result = ("{ \"results\": " & data & "}").parseJson()
+	of '{': discard
+	of '[': data = ("{ \"results\": " & data & "}")
 	else:
 		raise newException(ValueError, "malformed reply: " & data)
+	result = data.parseJson()
 
 template query(comp: Compositor; kind: MessageKind; payload: JsonNode): untyped =
 	waitFor comp.sendMessage(kind, payload)
