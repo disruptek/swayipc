@@ -24,7 +24,9 @@ const magic = ['i', '3', '-', 'i', 'p', 'c']
 
 
 type
-	MessageKind = enum
+	## these are the types of queries you may issue to the server
+	## (the integer values are significant!)
+	Operation = enum
 		RunCommand = 0
 		GetWorkspaces = 1
 		Subscribe = 2
@@ -38,6 +40,8 @@ type
 		SendTick = 10
 		Sync = 11
 	
+	## when you subscribe to events, these are the kinds of replies you get
+	## (the integer values are significant!)
 	EventKind = enum
 		Workspace = 0
 		Output = 1
@@ -48,15 +52,19 @@ type
 		Shutdown = 6
 		Tick = 7
 
+	## all messages fall into one of two categories
 	ReceiptKind = enum MessageReceipt, EventReceipt
+
+	## all messages may thus be represented by their category and content
 	Receipt = object
 		data: string
 		case kind: ReceiptKind
 		of MessageReceipt:
-			mkind: MessageKind
+			mkind: Operation
 		of EventReceipt:
 			ekind: EventKind
-		
+
+	## events arrive as a result of a subscription
 	Event = object
 		case kind: EventKind
 		of Workspace:
@@ -129,6 +137,7 @@ type
 		nodes: seq[TreeResult]
 		floating_nodes: seq[TreeResult]
 
+	## a reply arrives as a result of a query sent to the server
 	Reply = object of RootObj
 
 	RunCommandReply = object of Reply
@@ -202,6 +211,9 @@ type
 	Compositor = object
 		socket: AsyncSocket
 
+## nesm does the packing and unpacking of our messages and replies.
+## we separate out the header so that we can deserialize it alone,
+## in order to read the length of the subsequent envelope body...
 serializable:
 	type
 		Header = object
@@ -209,23 +221,37 @@ serializable:
 			length*: int32
 			mtype*: int32
 
-		Message = object
+		Envelope = object
 			header: Header
-			data: string as {size: {}.header.length}
+			body: string as {size: {}.header.length}
 
 # we'll use this to discriminate between message and event replies
 type ReceiptType = BitsRange[Header.mtype]
 
-proc newMessage(kind: MessageKind; data: string): Message =
+proc newEnvelope(kind: Operation; data: string): Envelope =
+	## create a new envelope for sending over the socket
+	result = Envelope(body: data)
 	result.header = Header(magic: magic,
 		length: cast[Header.length](data.len),
 		mtype: cast[Header.mtype](kind))
-	result.data = data
 
-proc sendMessage(comp: Compositor; kind: MessageKind; payload: JsonNode): Future[void] =
-	## sends a message and receives a json reply
+proc newCompositor(path=""): Future[Compositor] {.async.} =
+	## connect to a compositor on the given path, defaulting to sway
+	var
+		addy: string
+		sock = newAsyncSocket(AF_UNIX, SOCK_STREAM, IPPROTO_IP)
+	if path == "":
+		addy = os.getEnv("SWAYSOCK")
+	else:
+		addy = path
+	assert addy.len > 0, "unable to guess path to compositor socket"
+	asyncCheck sock.connectUnix(addy)
+	result = Compositor(socket: sock)
+
+proc send(kind: Operation; compositor: Compositor; payload=""): Future[Compositor] {.async.} =
+	## given an operation, send a payload to a compositor; yield the compositor
 	let
-		msg = kind.newMessage($payload)
+		msg = kind.newEnvelope($payload)
 	var
 		ss = newStringStream()
 
@@ -233,9 +259,16 @@ proc sendMessage(comp: Compositor; kind: MessageKind; payload: JsonNode): Future
 
 	# serialize the whole message into the stream and send it
 	serialize(msg, ss)
-	result = comp.socket.send(ss.data)
 
-proc recvMessage(comp: Compositor): Future[Receipt] {.async.} =
+	asyncCheck compositor.socket.send(ss.data)
+	result = compositor
+
+proc send(kind: Operation; payload=""; socket=""): Future[Compositor] {.async.} =
+	## given an operation, send a payload to a socket; yield the compositor
+	let compositor = await newCompositor(socket)
+	result = await kind.send(compositor, payload=payload)
+
+proc recv(comp: Compositor): Future[Receipt] {.async.} =
 	let
 		# sadly, Header.sizeof will not match the following, and
 		# i'm uncertain we can simply alter it by a constant
@@ -245,7 +278,7 @@ proc recvMessage(comp: Compositor): Future[Receipt] {.async.} =
 		data: string = ""
 
 	# read the message header to find out how big the message is
-	data = waitFor comp.socket.recv(headsize)
+	data = await comp.socket.recv(headsize)
 	assert data.len == headsize, "short read on header data"
 
 	# record the header we received to the stream
@@ -258,38 +291,41 @@ proc recvMessage(comp: Compositor): Future[Receipt] {.async.} =
 	debug "            of type:  ", header.mtype
 
 	# read the message body and write it into the stream
-	data = waitFor comp.socket.recv(header.length)
+	data = await comp.socket.recv(header.length)
 	assert data.len == header.length, "short read on message data"
 	ss.write(data)
 
 	# now we are ready to rewind and deserialize the whole message
 	ss.setPosition(0)
 	var # we may need to clear a bit
-		msg = Message.deserialize(ss)
-	debug "received ", msg.data
+		msg = Envelope.deserialize(ss)
+	debug "received ", msg.body
 	
 	# if the high bit is set, it's an event
 	if testBit[Header.mtype](msg.header.mtype, ReceiptType.high):
 		clearBit[Header.mtype](msg.header.mtype, ReceiptType.high)
-		result = Receipt(kind: EventReceipt, data: msg.data,
+		result = Receipt(kind: EventReceipt, data: msg.body,
 			ekind: cast[EventKind](msg.header.mtype))
 	# otherwise, it's a normal message
 	else:
-		result = Receipt(kind: MessageReceipt, data: msg.data,
-			mkind: cast[MessageKind](msg.header.mtype))
+		result = Receipt(kind: MessageReceipt, data: msg.body,
+			mkind: cast[Operation](msg.header.mtype))
 
 converter toJson(receipt: Receipt): JsonNode =
+	## natural conversion of receipt payloads into json
 	var data = receipt.data
 
 	case data[0]:
-	of '{': discard
-	of '[': data = ("{ \"results\": " & data & "}")
+	of '{':
+		result = data.parseJson()
+	of '[':
+		data = ("{ \"results\": " & data & "}")
+		result = data.parseJson()["results"]
 	else:
 		raise newException(ValueError, "malformed reply: " & data)
-	result = data.parseJson()
 
-template query(comp: Compositor; kind: MessageKind; payload: JsonNode): untyped =
-	waitFor comp.sendMessage(kind, payload)
+template query(comp: Compositor; kind: Operation; payload: JsonNode): untyped =
+	discard waitFor kind.send(comp, payload=payload)
 	let receipt = waitFor comp.recvMessage()
 	debug "received ", $receipt
 	let js = receipt.toJson
@@ -301,39 +337,28 @@ template query(comp: Compositor; kind: MessageKind; payload: JsonNode): untyped 
 	else:
 		raise newException(Defect, "not implemented")
 
-proc newCompositor(path=""): Future[Compositor] {.async.} =
-	var
-		addy: string
-		sock = newAsyncSocket(AF_UNIX, SOCK_STREAM, IPPROTO_IP)
-	if path == "":
-		addy = os.getEnv("SWAYSOCK")
-	else:
-		addy = path
-	assert addy.len > 0, "unable to guess path to compositor socket"
-	waitFor sock.connectUnix(addy)
-	result = Compositor(socket: sock)
-
-proc toPayload(kind: MessageKind; args: seq[string]): JsonNode =
+proc toPayload(kind: Operation; args: seq[string]): string =
+	## reformat operation arguments according to spec
 	result = case kind:
-	of RunCommand: %* args
-	of Subscribe: %* args
-	of GetVersion: newJObject()
+	of RunCommand: args[0]
+	of Subscribe: $(%* args)
+	of GetVersion: ""
 	else:
 		raise newException(Defect, "not implemented")
 
 proc i3ipc(socket=""; `type`=""; args: seq[string]) =
+	## cli tool to demonstrate basic usage
+	let
+		kind = parseEnum[Operation](`type`)
+		payload = kind.toPayload(args)
 	var
 		receipt: Receipt
-		comp = waitFor newCompositor(socket)
+		compositor: Compositor
 
-	let
-		kind = parseEnum[MessageKind](`type`)
-		payload = kind.toPayload(args)
-	
-	waitFor comp.sendMessage(kind, payload)
+	compositor = waitFor kind.send(payload=payload, socket=socket)
 
 	while true:
-		receipt = waitFor comp.recvMessage()
+		receipt = waitFor compositor.recv()
 		if kind != Subscribe:
 			echo receipt.data
 			break
@@ -350,9 +375,10 @@ proc i3ipc(socket=""; `type`=""; args: seq[string]) =
 
 when isMainModule:
 	when defined(release):
-		let logger = newConsoleLogger(useStderr=true, levelThreshold=lvlWarn)
+		let level = lvlWarn
 	else:
-		let logger = newConsoleLogger(useStderr=true, levelThreshold=lvlAll)
+		let level = lvlAll
+	let logger = newConsoleLogger(useStderr=true, levelThreshold=level)
 	addHandler(logger)
 
 	dispatch i3ipc
