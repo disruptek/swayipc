@@ -218,8 +218,8 @@ type ReceiptType = BitsRange[Header.mtype]
 
 proc newMessage(kind: MessageKind; data: string): Message =
 	result.header = Header(magic: magic,
-								  length: cast[Header.length](data.len),
-								  mtype: cast[Header.mtype](kind))
+		length: cast[Header.length](data.len),
+		mtype: cast[Header.mtype](kind))
 	result.data = data
 
 proc sendMessage(comp: Compositor; kind: MessageKind; payload: JsonNode): Future[void] =
