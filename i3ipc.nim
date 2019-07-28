@@ -26,7 +26,7 @@ const magic = ['i', '3', '-', 'i', 'p', 'c']
 type
 	## these are the types of queries you may issue to the server
 	## (the integer values are significant!)
-	Operation = enum
+	Operation* = enum
 		RunCommand = 0
 		GetWorkspaces = 1
 		Subscribe = 2
@@ -56,8 +56,8 @@ type
 	ReceiptKind = enum MessageReceipt, EventReceipt
 
 	## all messages may thus be represented by their category and content
-	Receipt = object
-		data: string
+	Receipt* = object
+		data*: string
 		case kind: ReceiptKind
 		of MessageReceipt:
 			mkind: Operation
@@ -248,7 +248,7 @@ proc newCompositor(path=""): Future[Compositor] {.async.} =
 	asyncCheck sock.connectUnix(addy)
 	result = Compositor(socket: sock)
 
-proc send(kind: Operation; compositor: Compositor; payload=""): Future[Compositor] {.async.} =
+proc send*(kind: Operation; compositor: Compositor; payload=""): Future[Compositor] {.async.} =
 	## given an operation, send a payload to a compositor; yield the compositor
 	let
 		msg = kind.newEnvelope($payload)
@@ -263,12 +263,12 @@ proc send(kind: Operation; compositor: Compositor; payload=""): Future[Composito
 	asyncCheck compositor.socket.send(ss.data)
 	result = compositor
 
-proc send(kind: Operation; payload=""; socket=""): Future[Compositor] {.async.} =
+proc send*(kind: Operation; payload=""; socket=""): Future[Compositor] {.async.} =
 	## given an operation, send a payload to a socket; yield the compositor
 	let compositor = await newCompositor(socket)
 	result = await kind.send(compositor, payload=payload)
 
-proc recv(comp: Compositor): Future[Receipt] {.async.} =
+proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 	let
 		# sadly, Header.sizeof will not match the following, and
 		# i'm uncertain we can simply alter it by a constant
