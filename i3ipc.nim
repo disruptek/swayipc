@@ -12,6 +12,7 @@ import logging
 import strutils
 import bitops
 
+export asyncdispatch
 
 ##
 ## documentation for the i3 ipc interface:
@@ -42,7 +43,7 @@ type
 	
 	## when you subscribe to events, these are the kinds of replies you get
 	## (the integer values are significant!)
-	EventKind = enum
+	EventKind* = enum
 		Workspace = 0
 		Output = 1
 		Mode = 2
@@ -53,27 +54,28 @@ type
 		Tick = 7
 
 	## all messages fall into one of two categories
-	ReceiptKind = enum MessageReceipt, EventReceipt
+	ReceiptKind* = enum MessageReceipt, EventReceipt
 
 	## all messages may thus be represented by their category and content
 	Receipt* = object
 		data*: string
-		case kind: ReceiptKind
+		case kind*: ReceiptKind
 		of MessageReceipt:
-			mkind: Operation
+			mkind*: Operation
 		of EventReceipt:
-			ekind: EventKind
+			ekind*: EventKind
 
 	## events arrive as a result of a subscription
 	Event = object
+		change: string
 		case kind: EventKind
 		of Workspace:
-			change: string
 			old: TreeResult
 			current: TreeResult
 		of Output: discard
 		of Mode: discard
 		of Window:
+			title: string
 			container: TreeResult
 		of BarconfigUpdate:
 			id: string
@@ -109,33 +111,34 @@ type
 		current_workspace: string
 		rect: Rect
 
-	WindowProperties = object
-		title: string
-		instance: string
-		class: string
-		window_role: string
-		transient_or: string
+	WindowProperties* = object
+		title*: string
+		instance*: string
+		class*: string
+		window_role*: string
+		transient_or*: string
 
-	TreeResult = object
-		id: int
-		name: string
-		`type`: string
-		border: string
-		current_border_width: int
-		layout: string
-		orientation: string
-		percent: float
-		rect: Rect
-		window_rect: Rect
-		deco_rect: Rect
-		geometry: Rect
-		window: int
-		window_properties: WindowProperties
-		urgent: bool
-		focused: bool
-		focus: seq[int]
-		nodes: seq[TreeResult]
-		floating_nodes: seq[TreeResult]
+	TreeResult* = object
+		id*: int
+		name*: string
+		#`type`: string
+		border*: string
+		current_border_width*: int
+		layout*: string
+		orientation*: string
+		percent*: float
+		rect*: Rect
+		window_rect*: Rect
+		deco_rect*: Rect
+		geometry*: Rect
+		#window*: int
+		#window_properties*: WindowProperties
+		urgent*: bool
+		focused*: bool
+		sticky*: bool
+		focus*: seq[int]
+		#nodes*: seq[TreeResult]
+		#floating_nodes*: seq[TreeResult]
 
 	## a reply arrives as a result of a query sent to the server
 	Reply = object of RootObj
@@ -202,13 +205,13 @@ type
 		input_code: string
 		symbol: string
 		input_type: string
-	Rect = object
-		x: int
-		y: int
-		height: int
-		width: int
+	Rect* = object
+		x*: int
+		y*: int
+		height*: int
+		width*: int
 
-	Compositor = object
+	Compositor* = object
 		socket: AsyncSocket
 
 ## nesm does the packing and unpacking of our messages and replies.
@@ -235,7 +238,7 @@ proc newEnvelope(kind: Operation; data: string): Envelope =
 		length: cast[Header.length](data.len),
 		mtype: cast[Header.mtype](kind))
 
-proc newCompositor(path=""): Future[Compositor] {.async.} =
+proc newCompositor*(path=""): Future[Compositor] {.async.} =
 	## connect to a compositor on the given path, defaulting to sway
 	var
 		addy: string
@@ -279,6 +282,9 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 
 	# read the message header to find out how big the message is
 	data = await comp.socket.recv(headsize)
+	if data.len == 0:
+		debug "exiting due to empty read..."
+		quit(1)
 	assert data.len == headsize, "short read on header data"
 
 	# record the header we received to the stream
@@ -293,6 +299,9 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 	# read the message body and write it into the stream
 	data = await comp.socket.recv(header.length)
 	assert data.len == header.length, "short read on message data"
+	if data.len == 0:
+		debug "exiting due to empty read..."
+		quit(1)
 	ss.write(data)
 
 	# now we are ready to rewind and deserialize the whole message
@@ -311,7 +320,7 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 		result = Receipt(kind: MessageReceipt, data: msg.body,
 			mkind: cast[Operation](msg.header.mtype))
 
-converter toJson(receipt: Receipt): JsonNode =
+converter toJson*(receipt: Receipt): JsonNode =
 	## natural conversion of receipt payloads into json
 	var data = receipt.data
 
