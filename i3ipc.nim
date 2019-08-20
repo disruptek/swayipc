@@ -169,7 +169,7 @@ type
 		config: string
 	GetMarksReply = object of Reply
 		results: seq[string]
-	TreeReply = object of Reply
+	GetTreeReply = object of Reply
 		tree: TreeResult
 	BarConfigReplyKind = enum AllBars, OneBar
 	BarConfigReply = object of Reply
@@ -343,6 +343,7 @@ template query(comp: Compositor; kind: Operation; payload: JsonNode): untyped =
 	of RunCommand: js.to(RunCommandReply)
 	of GetVersion: js.to(GetVersionReply)
 	of Subscribe: js.to(SubscribeReply)
+	of GetTree: js.to(GetTreeReply)
 	else:
 		raise newException(Defect, "not implemented")
 
@@ -352,6 +353,7 @@ proc toPayload(kind: Operation; args: seq[string]): string =
 	of RunCommand: args[0]
 	of Subscribe: $(%* args)
 	of GetVersion: ""
+	of GetTree: ""
 	else:
 		raise newException(Defect, "not implemented")
 
