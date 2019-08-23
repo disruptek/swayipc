@@ -23,7 +23,6 @@ export asyncdispatch
 ## a special prefix for messages to/from the server
 const magic = ['i', '3', '-', 'i', 'p', 'c']
 
-
 type
 	## these are the types of queries you may issue to the server
 	## (the integer values are significant!)
@@ -111,17 +110,17 @@ type
 		current_workspace: string
 		rect: Rect
 
-	WindowProperties* = object
+	WindowProperties* = ref object
 		title*: string
 		instance*: string
 		class*: string
 		window_role*: string
 		transient_or*: string
 
-	TreeResult* = object
+	TreeResult* = ref object
 		id*: int
 		name*: string
-		#`type`: string
+		`type`*: string
 		border*: string
 		current_border_width*: int
 		layout*: string
@@ -131,48 +130,48 @@ type
 		window_rect*: Rect
 		deco_rect*: Rect
 		geometry*: Rect
-		#window*: int
-		#window_properties*: WindowProperties
+		window*: int
+		window_properties*: WindowProperties
 		urgent*: bool
 		focused*: bool
 		sticky*: bool
 		focus*: seq[int]
-		#nodes*: seq[TreeResult]
-		#floating_nodes*: seq[TreeResult]
+		nodes*: seq[TreeResult]
+		floating_nodes*: seq[TreeResult]
 
 	## a reply arrives as a result of a query sent to the server
 	Reply = object of RootObj
 
-	RunCommandReply = object of Reply
+	RunCommandReply* = object of Reply
 		results: seq[RunCommandResult]
-	GetVersionReply = object of Reply
+	GetVersionReply* = object of Reply
 		major: int
 		minor: int
 		patch: int
 		#variant: string
 		human_readable: string
 		loaded_config_file_name: string
-	GetBarConfigReply = object of Reply
+	GetBarConfigReply* = object of Reply
 		colors: Table[string, string]
 		id: string
 		mode: string
 		position: string
 		status_command: string
 		font: string
-	GetOutputsReply = object of Reply
+	GetOutputsReply* = object of Reply
 		results: seq[OutputResult]
-	GetWorkspacesReply = object of Reply
+	GetWorkspacesReply* = object of Reply
 		results: seq[WorkspaceResult]
-	SubscribeReply = object of Reply
+	SubscribeReply* = object of Reply
 		success: bool
-	GetConfigReply = object of Reply
+	GetConfigReply* = object of Reply
 		config: string
-	GetMarksReply = object of Reply
+	GetMarksReply* = object of Reply
 		results: seq[string]
-	GetTreeReply = object of Reply
-		tree: TreeResult
+	GetTreeReply* = object of Reply
+		tree*: TreeResult
 	BarConfigReplyKind = enum AllBars, OneBar
-	BarConfigReply = object of Reply
+	BarConfigReply* = object of Reply
 		case kind: BarConfigReplyKind
 		of AllBars:
 			results: seq[string]
@@ -186,7 +185,7 @@ type
 			binding_mode_indicator: bool
 			verbose: bool
 			colors: Table[string, string]
-	TickReply = object of Reply
+	TickReply* = object of Reply
 		success: bool
 
 	#[
@@ -205,6 +204,7 @@ type
 		input_code: string
 		symbol: string
 		input_type: string
+
 	Rect* = object
 		x*: int
 		y*: int
@@ -320,6 +320,50 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 		result = Receipt(kind: MessageReceipt, data: msg.body,
 			mkind: cast[Operation](msg.header.mtype))
 
+converter toWindowProperties(js: JsonNode): WindowProperties =
+	new(result)
+	result.title = js["title"].getStr
+	result.instance = js["instance"].getStr
+	result.class = js["class"].getStr
+	result.window_role = js{"window_role"}.getStr
+	result.transient_or = js{"transient_or"}.getStr
+
+converter toRect(js: JsonNode): Rect =
+	result.x = js["x"].getInt
+	result.y = js["y"].getInt
+	result.height = js["height"].getInt
+	result.width = js["width"].getInt
+
+converter toTreeResult(js: JsonNode): TreeResult =
+	new(result)
+	result.id = js["id"].getInt
+	result.name = js["name"].getStr
+	result.`type` = js["type"].getStr
+	result.border = js["border"].getStr
+	result.currentBorderWidth = js["current_border_width"].getInt
+	result.layout = js["layout"].getStr
+	result.orientation = js["orientation"].getStr
+	result.percent = js["percent"].getFloat
+	result.rect = js["rect"].toRect
+	result.window_rect = js["window_rect"].toRect
+	result.deco_rect = js["deco_rect"].toRect
+	result.geometry = js["geometry"].toRect
+	result.window = js["window"].getInt
+	if "window_properties" in js:
+		result.window_properties = js["window_properties"].toWindowProperties
+	result.urgent = js["urgent"].getBool
+	result.focused = js["focused"].getBool
+	result.sticky = js["sticky"].getBool
+	result.focus = @[]
+	for j in js["focus"]:
+		result.focus.add j.getInt
+	if "nodes" in js:
+		for j in js["nodes"]:
+			result.nodes.add j.toTreeResult
+	if "floating_nodes" in js:
+		for j in js["floating_nodes"]:
+			result.floating_nodes.add j.toTreeResult
+
 converter toJson*(receipt: Receipt): JsonNode =
 	## natural conversion of receipt payloads into json
 	var data = receipt.data
@@ -333,19 +377,18 @@ converter toJson*(receipt: Receipt): JsonNode =
 	else:
 		raise newException(ValueError, "malformed reply: " & data)
 
-template query(comp: Compositor; kind: Operation; payload: JsonNode): untyped =
-	discard waitFor kind.send(comp, payload=payload)
-	let receipt = waitFor comp.recvMessage()
-	debug "received ", $receipt
-	let js = receipt.toJson
-
-	case receipt.mkind:
-	of RunCommand: js.to(RunCommandReply)
-	of GetVersion: js.to(GetVersionReply)
-	of Subscribe: js.to(SubscribeReply)
-	of GetTree: js.to(GetTreeReply)
-	else:
-		raise newException(Defect, "not implemented")
+proc getTree*(compositor: Compositor): Future[GetTreeReply] {.async.} =
+	## fetch the client tree
+	asyncCheck GetTree.send(compositor)
+	let
+		receipt = await compositor.recv()
+		js = receipt.data.parseJson
+	result = GetTreeReply(tree: js.toTreeResult)
+	
+proc getTree*(socket=""): Future[GetTreeReply] {.async.} =
+	## fetch the client tree without a compositor
+	let compositor = await newCompositor(socket)
+	result = await compositor.getTree()
 
 proc toPayload(kind: Operation; args: seq[string]): string =
 	## reformat operation arguments according to spec
