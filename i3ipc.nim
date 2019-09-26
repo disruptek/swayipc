@@ -22,6 +22,9 @@ export asyncdispatch
 ## a special prefix for messages to/from the server
 const magic = ['i', '3', '-', 'i', 'p', 'c']
 
+# sway basically sends us complete containers sometimes...  parse them!
+const SWAY = true
+
 type
   ## these are the types of queries you may issue to the server
   ## (the integer values are significant!)
@@ -51,26 +54,14 @@ type
     Shutdown = 6
     Tick = 7
 
-  ## all messages fall into one of two categories
-  ReceiptKind* = enum MessageReceipt, EventReceipt
-
-  ## all messages may thus be represented by their category and content
-  Receipt* = object
-    data*: string
-    case kind*: ReceiptKind
-    of MessageReceipt:
-      mkind*: Operation
-    of EventReceipt:
-      event*: Event
-
   WorkspaceEvent* = ref object
     change*: string
-    old*: TreeResult
-    current*: TreeResult
+    old*: TreeReply
+    current*: TreeReply
 
   WindowEvent* = ref object
     change*: string
-    container*: TreeResult
+    container*: TreeReply
 
   BarConfigUpdateEvent* = ref object
     id*: string
@@ -115,26 +106,10 @@ type
     of Tick:
       tick*: TickEvent
 
-  WorkspaceResult = object
-    num: int
-    name: string
-    visible: bool
-    focused: bool
-    urgent: bool
-    rect: Rect
-    output: string
-
-  RunCommandResult = object
+  RunCommandReply = object
     error: string
     success: bool
     parse_error: bool
-
-  OutputResult = object
-    name: string
-    active: bool
-    primary: bool
-    current_workspace: string
-    rect: Rect
 
   WindowProperties* = ref object
     title*: string
@@ -143,9 +118,10 @@ type
     window_role*: string
     transient_or*: string
 
-  TreeResult* = ref object
+  TreeReply* = ref object
     id*: int
     name*: string
+    app_id*: string # for sway
     `type`*: string
     border*: string
     current_border_width*: int
@@ -162,65 +138,43 @@ type
     focused*: bool
     sticky*: bool
     focus*: seq[int]
-    nodes*: seq[TreeResult]
-    floating_nodes*: seq[TreeResult]
+    nodes*: seq[TreeReply]
+    floating_nodes*: seq[TreeReply]
 
-  ## a reply arrives as a result of a query sent to the server
-  Reply = object of RootObj
+  VersionReply = object
+    major*: int
+    minor*: int
+    patch*: int
+    human_readable*: string
+    loaded_config_file_name*: string
+    variant*: string # sway
 
-  RunCommandReply* = object of Reply
-    results: seq[RunCommandResult]
-  GetVersionReply* = object of Reply
-    major: int
-    minor: int
-    patch: int
-    #variant: string
-    human_readable: string
-    loaded_config_file_name: string
-  GetBarConfigReply* = object of Reply
-    colors: Table[string, string]
-    id: string
-    mode: string
-    position: string
-    status_command: string
-    font: string
-  GetOutputsReply* = object of Reply
-    results: seq[OutputResult]
-  GetWorkspacesReply* = object of Reply
-    results: seq[WorkspaceResult]
-  SubscribeReply* = object of Reply
-    success: bool
-  GetConfigReply* = object of Reply
-    config: string
-  GetMarksReply* = object of Reply
-    results: seq[string]
-  GetTreeReply* = object of Reply
-    tree*: TreeResult
-  BarConfigReplyKind = enum AllBars, OneBar
-  BarConfigReply* = object of Reply
-    case kind: BarConfigReplyKind
-    of AllBars:
-      results: seq[string]
+  OneBarConfig = object
+    id*: string
+    mode*: string
+    position*: string
+    status_command*: string
+    font*: string
+    workspace_buttons*: bool
+    binding_mode_indicator*: bool
+    verbose*: bool
+    colors*: Table[string, string]
+
+  BarConfigReplyKind* = enum BarNames, OneBar
+  BarConfigReply* = object
+    case kind*: BarConfigReplyKind
+    of BarNames:
+      names*: seq[string]
     of OneBar:
-      id: string
-      mode: string
-      position: string
-      status_command: string
-      font: string
-      workspace_buttons: bool
-      binding_mode_indicator: bool
-      verbose: bool
-      colors: Table[string, string]
-  TickReply* = object of Reply
-    success: bool
+      config*: OneBarConfig
 
-  BindingInfo = object
-    command: string
-    input_code: int
-    symbol: string
-    input_type: string
-    # input_codes: seq[...?] on sway
-    event_state_mask: seq[string]
+  BindingInfo* = object
+    command*: string
+    input_code*: int
+    symbol*: string
+    input_type*: string
+    # input_codes*: seq[...?] on sway
+    event_state_mask*: seq[string]
 
   Rect* = object
     x*: int
@@ -229,9 +183,73 @@ type
     width*: int
 
   Compositor* = object
-    socket: AsyncSocket
+    socket*: AsyncSocket
 
-proc newEvent*(kind: EventKind; payload: string): Event
+when SWAY:
+  type
+    WorkspaceReply = TreeReply
+    OutputsReply = TreeReply
+else:
+  type
+    WorkspaceReply = object
+      num: int
+      name: string
+      visible: bool
+      focused: bool
+      urgent: bool
+      rect: Rect
+      output: string
+
+    OutputsReply = object
+      name: string
+      active: bool
+      primary: bool
+      current_workspace: string
+      rect: Rect
+
+type
+  ## all messages fall into one of two categories
+  ReceiptKind* = enum ReplyReceipt, EventReceipt
+
+  ## all messages may thus be represented by their category and content
+  Receipt* = object
+    data*: string
+    case kind*: ReceiptKind
+    of ReplyReceipt:
+      reply*: Reply
+    of EventReceipt:
+      event*: Event
+
+  ## a reply arrives as a result of a query sent to the server
+  Reply = ref object
+    case kind*: Operation
+    of RunCommand:
+      ran*: seq[RunCommandReply]
+    of GetVersion:
+      version*: VersionReply
+    of GetBarConfig:
+      bar*: BarConfigReply
+    of GetOutputs:
+      outputs*: seq[OutputsReply]
+    of GetWorkspaces:
+      workspaces*: seq[WorkspaceReply]
+    of Subscribe:
+      subscribe*: bool
+    of GetConfig:
+      config*: string
+    of GetMarks:
+      marks*: seq[string]
+    of GetTree:
+      tree*: TreeReply
+    of GetBindingModes:
+      modes*: seq[string]
+    of SendTick:
+      tick*: bool
+    of Sync:
+      sync*: bool
+
+proc newEvent(kind: EventKind; payload: string): Event
+proc newReply(kind: Operation; payload: string): Reply
 
 ## nesm does the packing and unpacking of our messages and replies.
 ## we separate out the header so that we can deserialize it alone,
@@ -252,6 +270,9 @@ type ReceiptType = BitsRange[Header.mtype]
 
 proc `$`*(event: Event): string =
   result = event.repr
+
+proc `$`*(reply: Reply): string =
+  result = reply.repr
 
 proc newEnvelope(kind: Operation; data: string): Envelope =
   ## create a new envelope for sending over the socket
@@ -340,16 +361,16 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
       event: newEvent(cast[EventKind](msg.header.mtype), msg.body))
   # otherwise, it's a normal message
   else:
-    result = Receipt(kind: MessageReceipt, data: msg.body,
-      mkind: cast[Operation](msg.header.mtype))
+    result = Receipt(kind: ReplyReceipt, data: msg.body,
+      reply: newReply(cast[Operation](msg.header.mtype), msg.body))
 
 converter toWindowProperties(js: JsonNode): WindowProperties =
   new result
   result.title = js["title"].getStr
   result.instance = js["instance"].getStr
   result.class = js["class"].getStr
-  result.window_role = js{"window_role"}.getStr
-  result.transient_or = js{"transient_or"}.getStr
+  result.window_role = js.getOrDefault("window_role").getStr
+  result.transient_or = js.getOrDefault("transient_or").getStr
 
 converter toRect(js: JsonNode): Rect =
   result.x = js["x"].getInt
@@ -357,10 +378,11 @@ converter toRect(js: JsonNode): Rect =
   result.height = js["height"].getInt
   result.width = js["width"].getInt
 
-converter toTreeResult(js: JsonNode): TreeResult =
+converter toTreeReply(js: JsonNode): TreeReply =
   new result
   result.id = js["id"].getInt
   result.name = js["name"].getStr
+  result.app_id = js.getOrDefault("app_id").getStr
   result.`type` = js["type"].getStr
   result.border = js["border"].getStr
   result.currentBorderWidth = js["current_border_width"].getInt
@@ -382,10 +404,10 @@ converter toTreeResult(js: JsonNode): TreeResult =
     result.focus.add j.getInt
   if "nodes" in js:
     for j in js["nodes"]:
-      result.nodes.add j.toTreeResult
+      result.nodes.add j.toTreeReply
   if "floating_nodes" in js:
     for j in js["floating_nodes"]:
-      result.floating_nodes.add j.toTreeResult
+      result.floating_nodes.add j.toTreeReply
 
 converter toJson*(receipt: Receipt): JsonNode =
   ## natural conversion of receipt payloads into json
@@ -400,23 +422,72 @@ converter toJson*(receipt: Receipt): JsonNode =
   else:
     raise newException(ValueError, "malformed reply: " & data)
 
-proc getTree*(compositor: Compositor): Future[GetTreeReply] {.async.} =
-  ## fetch the client tree
-  asyncCheck GetTree.send(compositor)
-  let
-    receipt = await compositor.recv()
-    js = receipt.data.parseJson
-  result = GetTreeReply(tree: js.toTreeResult)
+proc newReply*(kind: Operation; js: JsonNode): Reply =
+  result = case kind:
+  of RunCommand:
+    var
+      ran: seq[RunCommandReply]
+    for n in js.items:
+      var run = RunCommandReply()
+      run.success = n.getOrDefault("success").getBool
+      run.parse_error = n.getOrDefault("parse_error").getBool
+      run.error = n.getOrDefault("error").getStr
+      ran.add run
+    Reply(kind: RunCommand, ran: ran)
+  of GetVersion:
+    Reply(kind: GetVersion, version: js.to(VersionReply))
+  of GetBarConfig:
+    if js.kind == JArray:
+      var bar = BarConfigReply(kind: BarNames)
+      for n in js.items:
+        bar.names.add n.getStr
+      Reply(kind: GetBarConfig, bar: bar)
+    else:
+      var bar = BarConfigReply(kind: OneBar, config: js.to(OneBarConfig))
+      Reply(kind: GetBarConfig, bar: bar)
+  of GetOutputs:
+    var outputs: seq[OutputsReply]
+    for n in js.items:
+      when OutputsReply is TreeReply:
+        outputs.add n.toTreeReply
+      else:
+        outputs.add n.to(OutputsReply)
+    Reply(kind: GetOutputs, outputs: outputs)
+  of GetWorkspaces:
+    var workspaces: seq[WorkspaceReply]
+    for n in js.items:
+      when WorkspaceReply is TreeReply:
+        workspaces.add n.toTreeReply
+      else:
+        workspaces.add n.to(WorkspaceReply)
+    Reply(kind: GetWorkspaces, workspaces: workspaces)
+  of Subscribe:
+    Reply(kind: Subscribe, subscribe: js["success"].getBool)
+  of GetConfig:
+    Reply(kind: GetConfig, config: js.getStr)
+  of GetMarks:
+    var marks: seq[string]
+    for n in js.items:
+      marks.add n.getStr
+    Reply(kind: GetMarks, marks: marks)
+  of GetTree:
+    Reply(kind: GetTree, tree: js.toTreeReply)
+  of GetBindingModes:
+    var modes: seq[string]
+    for n in js.items:
+      modes.add n.getStr
+    Reply(kind: GetBindingModes, modes: modes)
+  of SendTick:
+    Reply(kind: SendTick, tick: js["success"].getBool)
+  of Sync:
+    Reply(kind: Sync, sync: js["success"].getBool)
 
-proc getTree*(socket=""): Future[GetTreeReply] {.async.} =
-  ## fetch the client tree without a compositor
-  let compositor = await newCompositor(socket)
-  result = await compositor.getTree()
+proc newReply(kind: Operation; payload: string): Reply =
+  result = newReply(kind, payload.parseJson)
 
-proc newEvent*(kind: EventKind; payload: string): Event =
+proc newEvent*(kind: EventKind; js: JsonNode): Event =
   ## instantiate a new event of the given kind,
   ## parsing the json input payload from a string
-  let js = payload.parseJson
   case kind:
   of Workspace:
     var workspace = WorkspaceEvent(change: js.getOrDefault("change").getStr,
@@ -440,15 +511,34 @@ proc newEvent*(kind: EventKind; payload: string): Event =
   of Tick:
     Event(kind: Tick, tick: js.to(TickEvent))
 
-proc toPayload(kind: Operation; args: seq[string]): string =
+proc newEvent(kind: EventKind; payload: string): Event =
+  result = newEvent(kind, payload.parseJson)
+
+proc toPayload(kind: Operation; args: openarray[string]): string =
   ## reformat operation arguments according to spec
   result = case kind:
   of RunCommand: args[0]
   of Subscribe: $(%* args)
   of GetVersion: ""
   of GetTree: ""
+  of GetConfig: ""
+  of GetBindingModes: ""
+  of GetOutputs: ""
+  of GetMarks: ""
+  of GetBarConfig:
+    if args.len == 0:
+      ""
+    else:
+      args[0]
+  of GetWorkspaces: ""
   else:
     raise newException(Defect, "not implemented")
+
+proc invoke*(compositor: Compositor; operation: Operation; args: varargs[string, `$`]): Future[Reply] {.async.} =
+  ## fetch the client tree
+  asyncCheck operation.send(compositor, payload = operation.toPayload(args))
+  let receipt = await compositor.recv()
+  result = receipt.reply
 
 proc i3ipc(socket=""; `type`=""; args: seq[string]) =
   ## cli tool to demonstrate basic usage
@@ -464,13 +554,13 @@ proc i3ipc(socket=""; `type`=""; args: seq[string]) =
   while true:
     receipt = waitFor compositor.recv()
     if kind != Subscribe:
-      echo receipt.data
+      echo receipt.reply
       break
     # subscription receipts could indicate failure to subscribe,
     # or they could be events from successful subscription --
     # swallow success messages (only) and echo event data
     case receipt.kind:
-    of MessageReceipt:
+    of ReplyReceipt:
       if not receipt.toJson["success"].getBool:
         error receipt.data
         break
