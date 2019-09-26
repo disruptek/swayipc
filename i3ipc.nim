@@ -61,42 +61,39 @@ type
     of MessageReceipt:
       mkind*: Operation
     of EventReceipt:
-      ekind*: EventKind
       event*: Event
 
-  WorkspaceEvent = ref object
-    change: string
-    old: TreeResult
-    current: TreeResult
+  WorkspaceEvent* = ref object
+    change*: string
+    old*: TreeResult
+    current*: TreeResult
 
-  WindowEvent = ref object
-    change: string
-    # FIXME: verify title
-    title: string
-    container: TreeResult
+  WindowEvent* = ref object
+    change*: string
+    container*: TreeResult
 
-  BarConfigUpdateEvent = ref object
-    id: string
-    hidden_state: string
-    mode: string
+  BarConfigUpdateEvent* = ref object
+    id*: string
+    hidden_state*: string
+    mode*: string
 
-  BindingEvent = ref object
-    change: string
-    binding: BindingInfo
+  BindingEvent* = ref object
+    change*: string
+    binding*: BindingInfo
 
-  OutputEvent = ref object
-    change: string
+  OutputEvent* = ref object
+    change*: string
 
-  ModeEvent = ref object
-    change: string
-    pango_markup: bool
+  ModeEvent* = ref object
+    change*: string
+    pango_markup*: bool
 
-  ShutdownEvent = ref object
-    change: string
+  ShutdownEvent* = ref object
+    change*: string
 
-  TickEvent = ref object
-    first: string
-    payload: JsonNode
+  TickEvent* = ref object
+    first*: string
+    payload*: JsonNode
 
   ## events arrive as a result of a subscription
   Event* = ref object
@@ -340,7 +337,7 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
   if testBit[Header.mtype](msg.header.mtype, ReceiptType.high):
     clearBit[Header.mtype](msg.header.mtype, ReceiptType.high)
     result = Receipt(kind: EventReceipt, data: msg.body,
-           event: newEvent(cast[EventKind](msg.header.mtype), msg.body))
+      event: newEvent(cast[EventKind](msg.header.mtype), msg.body))
   # otherwise, it's a normal message
   else:
     result = Receipt(kind: MessageReceipt, data: msg.body,
@@ -432,7 +429,6 @@ proc newEvent*(kind: EventKind; payload: string): Event =
     Event(kind: Mode, mode: js.to(ModeEvent))
   of Window:
     var window = WindowEvent(change: js.getOrDefault("change").getStr,
-                             title: js.getOrDefault("title").getStr,
                              container: js.getOrDefault("container"))
     Event(kind: Window, window: window)
   of BarConfigUpdate:
