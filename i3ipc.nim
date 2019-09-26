@@ -534,11 +534,15 @@ proc toPayload(kind: Operation; args: openarray[string]): string =
   else:
     raise newException(Defect, "not implemented")
 
-proc invoke*(compositor: Compositor; operation: Operation; args: varargs[string, `$`]): Future[Reply] {.async.} =
+proc invoke*(compositor: Compositor; operation: Operation; args: seq[string] = @[]): Future[Reply] {.async.} =
   ## fetch the client tree
   asyncCheck operation.send(compositor, payload = operation.toPayload(args))
   let receipt = await compositor.recv()
   result = receipt.reply
+
+proc invoke*(operation: Operation; args: seq[string] = @[]; path = ""): Future[Reply] {.async.} =
+  let compositor = await newCompositor(path)
+  result = await compositor.invoke(operation, args = args)
 
 proc i3ipc(socket=""; `type`=""; args: seq[string]) =
   ## cli tool to demonstrate basic usage
