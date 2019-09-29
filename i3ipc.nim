@@ -337,8 +337,6 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 
   # deserialize it back out so we unpack the length/type
   let header = Header.deserialize(ss)
-  debug "len of reply string:  ", header.length
-  debug "            of type:  ", header.mtype
 
   # read the message body and write it into the stream
   data = await comp.socket.recv(header.length)
