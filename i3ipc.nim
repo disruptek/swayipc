@@ -364,7 +364,7 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 
 converter toWindowProperties(js: JsonNode): WindowProperties =
   new result
-  result.title = js["title"].getStr
+  result.title = js.getOrDefault("title").getStr
   result.instance = js["instance"].getStr
   result.class = js["class"].getStr
   result.window_role = js.getOrDefault("window_role").getStr
