@@ -556,7 +556,7 @@ proc i3ipc(socket=""; `type`=""; args: seq[string]) =
   while true:
     receipt = waitFor compositor.recv()
     if kind != Subscribe:
-      echo receipt.reply
+      echo receipt.data
       break
     # subscription receipts could indicate failure to subscribe,
     # or they could be events from successful subscription --
@@ -570,7 +570,7 @@ proc i3ipc(socket=""; `type`=""; args: seq[string]) =
       echo $receipt.event
 
 when isMainModule:
-  when defined(release):
+  when defined(release) or defined(danger):
     let level = lvlWarn
   else:
     let level = lvlAll
