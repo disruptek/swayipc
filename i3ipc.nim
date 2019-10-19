@@ -106,7 +106,7 @@ type
     of Tick:
       tick*: TickEvent
 
-  RunCommandReply = object
+  RunCommandReply* = object
     error*: string
     success*: bool
     parse_error*: bool
