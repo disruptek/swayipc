@@ -515,7 +515,7 @@ proc newEvent(kind: EventKind; payload: string): Event =
 proc toPayload(kind: Operation; args: openarray[string]): string =
   ## reformat operation arguments according to spec
   result = case kind:
-  of RunCommand: args[0]
+  of RunCommand: args.join("; ")
   of Subscribe: $(%* args)
   of GetVersion: ""
   of GetTree: ""
