@@ -4,6 +4,8 @@ It's like swaymsg (in sway) or i3ipc (in i3) but in native Nim.
 
 You might find these docs for i3ipc useful: https://i3wm.org/docs/ipc.html
 
+Also, here's [a useful example that repositions and resizes floating windows](https://github.com/disruptek/xs/blob/master/geometry.nim).
+
 ## Usage
 ```nim
 import asyncdispatch
@@ -21,7 +23,8 @@ proc dump(tree: TreeReply; indent=0) =
 var
   # connect to a compositor at an optional socket path
   compositor = waitFor newCompositor("../some/path")
-  reply = waitFor compositor.invoke(GetTree)
+  # synchronous tree retrieval
+  reply = compositor.invoke(GetTree)
 
 dump(reply.tree)
 #1 root
@@ -40,11 +43,6 @@ dump(reply.tree)
 #      6 floating_con
 #    7 workspace
 #      5 con
-
-# you can send messages to the default compositor
-# without connecting to it first, if you're lazy
-reply = waitFor GetBindingModes.invoke()
-assert "default" in reply.modes
 
 # you can pass extra arguments for a command (as strings)
 reply = waitFor GetBarConfig.invoke("status")
