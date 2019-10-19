@@ -107,9 +107,9 @@ type
       tick*: TickEvent
 
   RunCommandReply = object
-    error: string
-    success: bool
-    parse_error: bool
+    error*: string
+    success*: bool
+    parse_error*: bool
 
   WindowProperties* = ref object
     title*: string
