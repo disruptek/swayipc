@@ -571,6 +571,30 @@ proc i3ipc(socket=""; `type`=""; args: seq[string]) =
     of EventReceipt:
       echo $receipt.event
 
+proc hasChildren*(container: TreeReply): bool =
+  result = container.floatingNodes.len > 0
+  result = result or container.nodes.len > 0
+
+iterator children*(container: TreeReply): TreeReply =
+  for node in container.floatingNodes:
+    yield node
+  for node in container.nodes:
+    yield node
+
+iterator clientWalk*(container: TreeReply): TreeReply =
+  if container.hasChildren:
+    for child in container.children:
+      yield child
+  else:
+    yield container
+
+proc everyClient*(container: TreeReply): seq[TreeReply] =
+  if container.hasChildren:
+    for client in clientWalk(container):
+      result &= client.everyClient
+  else:
+    result.add container
+
 when isMainModule:
   when defined(release) or defined(danger):
     let level = lvlWarn
