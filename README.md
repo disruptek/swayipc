@@ -2,6 +2,8 @@
 
 It's like swaymsg (in sway) or i3ipc (in i3) but in native Nim.
 
+You might find these docs for i3ipc useful: https://i3wm.org/docs/ipc.html
+
 ## Usage
 ```nim
 import asyncdispatch
