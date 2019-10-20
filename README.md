@@ -4,7 +4,7 @@ It's like swaymsg (in sway) or i3ipc (in i3) but in native Nim.
 
 You might find these docs for i3ipc useful: https://i3wm.org/docs/ipc.html
 
-Also, here's [a useful example that repositions and resizes floating windows](https://github.com/disruptek/xs/blob/master/geometry.nim).
+See also [the useful examples below](#examples).
 
 ## Documentation
 See [the documentation for the swayipc module](https://disruptek.github.io/swayipc/swayipc.html) as generated directly from the source.
@@ -84,6 +84,10 @@ iterator focusChanges(): WindowEvent =
 for window in focusChanges():
   echo window.name, " now has focus"
 ```
+
+## Examples
+- [reposition and resize floating windows matching any of a series of regexps](https://github.com/disruptek/xs/blob/master/geometry.nim)
+- [automagically adjust the opacity of windows according to whether they are focussed](https://github.com/disruptek/xs/blob/master/autoopacity.nim)
 
 ## License
 MIT
