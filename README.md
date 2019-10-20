@@ -7,7 +7,7 @@ You might find these docs for i3ipc useful: https://i3wm.org/docs/ipc.html
 Also, here's [a useful example that repositions and resizes floating windows](https://github.com/disruptek/xs/blob/master/geometry.nim).
 
 ## Documentation
-See [the documentation for the swayipc module](https://disruptek.github.io/swayipc/) as generated directly from the source.
+See [the documentation for the swayipc module](https://disruptek.github.io/swayipc/swayipc.html) as generated directly from the source.
 
 ## Usage
 ```nim
