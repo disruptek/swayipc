@@ -544,7 +544,7 @@ proc invoke*(compositor: Compositor; operation: Operation; args: varargs[string,
     arguments.add arg
   result = waitfor compositor.invoke(operation, arguments)
 
-proc i3ipc(socket=""; `type`=""; args: seq[string]) =
+proc swayipc(socket=""; `type`=""; args: seq[string]) =
   ## cli tool to demonstrate basic usage
   let
     kind = parseEnum[Operation](`type`)
@@ -603,4 +603,4 @@ when isMainModule:
   let logger = newConsoleLogger(useStderr=true, levelThreshold=level)
   addHandler(logger)
 
-  dispatch i3ipc
+  dispatch swayipc

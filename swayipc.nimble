@@ -5,3 +5,5 @@ license = "MIT"
 requires "nim >= 0.20.0"
 requires "nesm >= 0.4.4"
 requires "cligen >= 0.9.39"
+
+bin = @["swayipc"]
