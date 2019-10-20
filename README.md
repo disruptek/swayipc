@@ -1,4 +1,4 @@
-# i3ipc library
+# swayipc
 
 It's like swaymsg (in sway) or i3ipc (in i3) but in native Nim.
 
@@ -11,7 +11,7 @@ Also, here's [a useful example that repositions and resizes floating windows](ht
 import asyncdispatch
 from strutils import spaces
 
-import i3ipc
+import swayipc
 
 proc dump(tree: TreeReply; indent=0) =
   echo indent.spaces, tree.id, " ", tree.`type`
