@@ -4,19 +4,22 @@ import tables
 import asyncdispatch
 import asyncnet
 import net
-import cligen
-import nesm
 import streams
 import logging
 import strutils
 import bitops
 
+import cligen
+import nesm
+
 export asyncdispatch
 
 ##
-## documentation for the i3 ipc interface:
+## Documentation for the i3 IPC interface:
 ##
 ## https://i3wm.org/docs/ipc.html
+##
+## Sadly, these docs are incomplete due to bugs in `nim doc`.
 ##
 
 const
@@ -251,9 +254,9 @@ type
 proc newEvent*(kind: EventKind; payload: string): Event
 proc newReply*(kind: Operation; payload: string): Reply
 
-## nesm does the packing and unpacking of our messages and replies.
-## we separate out the header so that we can deserialize it alone,
-## in order to read the length of the subsequent envelope body...
+# nesm does the packing and unpacking of our messages and replies.
+# we separate out the header so that we can deserialize it alone,
+# in order to read the length of the subsequent envelope body...
 serializable:
   type
     Header = object
@@ -269,9 +272,11 @@ serializable:
 type ReceiptType* = BitsRange[Header.mtype]
 
 proc `$`*(event: Event): string =
+  ## render an event
   result = event.repr
 
 proc `$`*(reply: Reply): string =
+  ## render a reply
   result = reply.repr
 
 proc newEnvelope(kind: Operation; data: string): Envelope =
@@ -294,7 +299,8 @@ proc newCompositor*(path=""): Future[Compositor] {.async.} =
   asyncCheck sock.connectUnix(addy)
   result = Compositor(socket: sock)
 
-proc send*(kind: Operation; compositor: Compositor; payload=""): Future[Compositor] {.async.} =
+proc send*(kind: Operation; compositor: Compositor; payload = ""):
+  Future[Compositor] {.async.} =
   ## given an operation, send a payload to a compositor; yield the compositor
   let
     msg = kind.newEnvelope($payload)
@@ -309,13 +315,14 @@ proc send*(kind: Operation; compositor: Compositor; payload=""): Future[Composit
   asyncCheck compositor.socket.send(ss.data)
   result = compositor
 
-proc send*(kind: Operation; payload=""; socket=""): Future[Compositor] {.async.} =
+proc send*(kind: Operation; payload = ""; socket = ""):
+  Future[Compositor] {.async.} =
   ## given an operation, send a payload to a socket; yield the compositor
   let compositor = await newCompositor(socket)
-  result = await kind.send(compositor, payload=payload)
+  result = await kind.send(compositor, payload = payload)
 
 proc recv*(comp: Compositor): Future[Receipt] {.async.} =
-  ## receive a  message from the compositor
+  ## receive a  message from the compositor asynchronously
   let
     # sadly, Header.sizeof will not match the following, and
     # i'm uncertain we can simply alter it by a constant
@@ -363,6 +370,7 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
       reply: newReply(cast[Operation](msg.header.mtype), msg.body))
 
 converter toWindowProperties(js: JsonNode): WindowProperties =
+  ## conveniently convert a JsonNode to WindowProperties
   new result
   result.title = js.getOrDefault("title").getStr
   result.instance = js["instance"].getStr
@@ -371,12 +379,14 @@ converter toWindowProperties(js: JsonNode): WindowProperties =
   result.transient_or = js.getOrDefault("transient_or").getStr
 
 converter toRect(js: JsonNode): Rect =
+  ## conveniently convert a JsonNode to a Rect
   result.x = js["x"].getInt
   result.y = js["y"].getInt
   result.height = js["height"].getInt
   result.width = js["width"].getInt
 
 converter toTreeReply(js: JsonNode): TreeReply =
+  ## conveniently convert a JsonNode to a TreeReply
   new result
   result.id = js["id"].getInt
   result.name = js["name"].getStr
@@ -421,6 +431,7 @@ converter toJson*(receipt: Receipt): JsonNode =
     raise newException(ValueError, "malformed reply: " & data)
 
 proc newReply*(kind: Operation; js: JsonNode): Reply =
+  ## parse a reply for the given operation using a JsonNode
   result = case kind:
   of RunCommand:
     var
@@ -481,6 +492,7 @@ proc newReply*(kind: Operation; js: JsonNode): Reply =
     Reply(kind: Sync, sync: js["success"].getBool)
 
 proc newReply(kind: Operation; payload: string): Reply =
+  ## parse a reply for the given operation using json in a string
   result = newReply(kind, payload.parseJson)
 
 proc newEvent*(kind: EventKind; js: JsonNode): Event =
@@ -510,6 +522,7 @@ proc newEvent*(kind: EventKind; js: JsonNode): Event =
     Event(kind: Tick, tick: js.to(TickEvent))
 
 proc newEvent(kind: EventKind; payload: string): Event =
+  ## parse an event of the given kind using json in a string
   result = newEvent(kind, payload.parseJson)
 
 proc toPayload(kind: Operation; args: openarray[string]): string =
@@ -533,16 +546,17 @@ proc toPayload(kind: Operation; args: openarray[string]): string =
     raise newException(Defect, "not implemented")
 
 proc invoke*(compositor: Compositor; operation: Operation; args: seq[string]): Future[Reply] {.async.} =
-  ## fetch the client tree
+  ## perform an invocation of the given operation asynchronously
   asyncCheck operation.send(compositor, payload = operation.toPayload(args))
   let receipt = await compositor.recv()
   result = receipt.reply
 
 proc invoke*(compositor: Compositor; operation: Operation; args: varargs[string, `$`]): Reply =
+  ## perform an invocation of the given operation synchronously
   var arguments: seq[string]
   for arg in args.items:
     arguments.add arg
-  result = waitfor compositor.invoke(operation, arguments)
+  result = waitFor compositor.invoke(operation, arguments)
 
 proc swayipc(socket=""; `type`=""; args: seq[string]) =
   ## cli tool to demonstrate basic usage
@@ -572,16 +586,19 @@ proc swayipc(socket=""; `type`=""; args: seq[string]) =
       echo $receipt.event
 
 proc hasChildren*(container: TreeReply): bool =
+  ## true if the container has children, floating or otherwise
   result = container.floatingNodes.len > 0
   result = result or container.nodes.len > 0
 
 iterator children*(container: TreeReply): TreeReply =
+  ## yields all child containers of this container, omitting the input
   for node in container.floatingNodes:
     yield node
   for node in container.nodes:
     yield node
 
 iterator clientWalk*(container: TreeReply): TreeReply =
+  ## yields children of this container if they exist, otherwise yields itself
   if container.hasChildren:
     for child in container.children:
       yield child
@@ -589,6 +606,7 @@ iterator clientWalk*(container: TreeReply): TreeReply =
     yield container
 
 proc everyClient*(container: TreeReply): seq[TreeReply] =
+  ## produces a sequence of all leaves (child-free containers) in the given tree
   if container.hasChildren:
     for client in clientWalk(container):
       result &= client.everyClient
