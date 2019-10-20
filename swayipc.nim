@@ -19,11 +19,11 @@ export asyncdispatch
 ## https://i3wm.org/docs/ipc.html
 ##
 
-## a special prefix for messages to/from the server
-const magic = ['i', '3', '-', 'i', 'p', 'c']
+const
+  magic = ['i', '3', '-', 'i', 'p', 'c'] ## prefix for msgs to/from server
 
 # sway basically sends us complete containers sometimes...  parse them!
-const SWAY = true
+  SWAY = true
 
 type
   ## these are the types of queries you may issue to the server
@@ -248,8 +248,8 @@ type
     of Sync:
       sync*: bool
 
-proc newEvent(kind: EventKind; payload: string): Event
-proc newReply(kind: Operation; payload: string): Reply
+proc newEvent*(kind: EventKind; payload: string): Event
+proc newReply*(kind: Operation; payload: string): Reply
 
 ## nesm does the packing and unpacking of our messages and replies.
 ## we separate out the header so that we can deserialize it alone,
@@ -266,7 +266,7 @@ serializable:
       body: string as {size: {}.header.length}
 
 # we'll use this to discriminate between message and event replies
-type ReceiptType = BitsRange[Header.mtype]
+type ReceiptType* = BitsRange[Header.mtype]
 
 proc `$`*(event: Event): string =
   result = event.repr
