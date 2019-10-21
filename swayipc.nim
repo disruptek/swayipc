@@ -286,7 +286,7 @@ proc newEnvelope(kind: Operation; data: string): Envelope =
     length: cast[Header.length](data.len),
     mtype: cast[Header.mtype](kind))
 
-proc newCompositor*(path=""): Future[Compositor] {.async.} =
+proc newCompositor*(path = ""): Future[Compositor] {.async.} =
   ## connect to a compositor on the given path, defaulting to sway
   var
     addy: string
@@ -295,7 +295,8 @@ proc newCompositor*(path=""): Future[Compositor] {.async.} =
     addy = os.getEnv("SWAYSOCK")
   else:
     addy = path
-  assert addy.len > 0, "unable to guess path to compositor socket"
+  if addy.len == 0:
+    raise newException(ValueError, "empty path to compositor socket")
   asyncCheck sock.connectUnix(addy)
   result = Compositor(socket: sock)
 
@@ -336,7 +337,8 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
   if data.len == 0:
     debug "exiting due to empty read..."
     quit(1)
-  assert data.len == headsize, "short read on header data"
+  if data.len != headsize:
+    raise newException(IOError, "short read on header data")
 
   # record the header we received to the stream
   ss.write(data)
@@ -347,7 +349,8 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 
   # read the message body and write it into the stream
   data = await comp.socket.recv(header.length)
-  assert data.len == header.length, "short read on message data"
+  if data.len != header.length:
+    raise newException(IOError, "short read on message data")
   if data.len == 0:
     debug "exiting due to empty read..."
     quit(1)
