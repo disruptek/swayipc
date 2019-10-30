@@ -376,8 +376,8 @@ converter toWindowProperties(js: JsonNode): WindowProperties =
   ## conveniently convert a JsonNode to WindowProperties
   new result
   result.title = js.getOrDefault("title").getStr
-  result.instance = js["instance"].getStr
-  result.class = js["class"].getStr
+  result.instance = js.getOrDefault("instance").getStr
+  result.class = js.getOrDefault("class").getStr
   result.window_role = js.getOrDefault("window_role").getStr
   result.transient_or = js.getOrDefault("transient_or").getStr
 
