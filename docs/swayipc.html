@@ -983,6 +983,10 @@ function main() {
     title="newCompositor(path = &quot;&quot;): Future[Compositor]"><wbr />new<wbr />Compositor<span class="attachedType">Compositor</span></a></li>
   <li><a class="reference" href="#send%2COperation%2CCompositor%2Cstring"
     title="send(kind: Operation; compositor: Compositor; payload = &quot;&quot;): Future[Compositor]"><wbr />send<span class="attachedType">Operation</span></a></li>
+  <li><a class="reference" href="#send%2COperation%2Cstring%2Cstring"
+    title="send(kind: Operation; payload = &quot;&quot;; socket = &quot;&quot;): Future[Compositor]"><wbr />send<span class="attachedType">Operation</span></a></li>
+  <li><a class="reference" href="#recv%2CCompositor"
+    title="recv(comp: Compositor): Future[Receipt]"><wbr />recv<span class="attachedType">Compositor</span></a></li>
   <li><a class="reference" href="#newReply%2COperation%2CJsonNode"
     title="newReply(kind: Operation; js: JsonNode): Reply"><wbr />new<wbr />Reply<span class="attachedType">Operation</span></a></li>
   <li><a class="reference" href="#newReply%2COperation%2Cstring"
@@ -991,6 +995,8 @@ function main() {
     title="newEvent(kind: EventKind; js: JsonNode): Event"><wbr />new<wbr />Event<span class="attachedType">EventKind</span></a></li>
   <li><a class="reference" href="#newEvent%2CEventKind%2Cstring"
     title="newEvent(kind: EventKind; payload: string): Event"><wbr />new<wbr />Event<span class="attachedType">EventKind</span></a></li>
+  <li><a class="reference" href="#invoke%2CCompositor%2COperation%2Cseq%5BT%5D%5Bstring%5D"
+    title="invoke(compositor: Compositor; operation: Operation; args: seq[string]): Future[Reply]"><wbr />invoke<span class="attachedType">Compositor</span></a></li>
   <li><a class="reference" href="#invoke%2CCompositor%2COperation%2Cvarargs%5Bstring%2C%5D"
     title="invoke(compositor: Compositor; operation: Operation; args: varargs[string, `$`]): Reply"><wbr />invoke<span class="attachedType">Compositor</span></a></li>
   <li><a class="reference" href="#hasChildren%2CTreeReply"
@@ -1003,7 +1009,9 @@ function main() {
 <li>
   <a class="reference reference-toplevel" href="#15" id="65">Iterators</a>
   <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#clientWalk.i%2CTreeReply"
+      <li><a class="reference" href="#children.i%2CTreeReply"
+    title="children(container: TreeReply): TreeReply"><wbr />children<span class="attachedType">TreeReply</span></a></li>
+  <li><a class="reference" href="#clientWalk.i%2CTreeReply"
     title="clientWalk(container: TreeReply): TreeReply"><wbr />client<wbr />Walk<span class="attachedType">TreeReply</span></a></li>
 
   </ul>
@@ -1333,22 +1341,40 @@ connect to a compositor on the given path, defaulting to sway
 </dd>
 <a id="send,Operation,Compositor,string"></a>
 <dt><pre><span class="Keyword">proc</span> <a href="#send%2COperation%2CCompositor%2Cstring"><span class="Identifier">send</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">compositor</span><span class="Other">:</span> <a href="swayipc.html#Compositor"><span class="Identifier">Compositor</span></a><span class="Other">;</span> <span class="Identifier">payload</span> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Future</span><span class="Other">[</span><a href="swayipc.html#Compositor"><span class="Identifier">Compositor</span></a><span class="Other">]</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma">
-    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">FutureError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">FutureError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteIOEffect</span><span class="Other">,</span> <span class="Identifier">RootEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
 
 given an operation, send a payload to a compositor; yield the compositor
 
 </dd>
+<a id="send,Operation,string,string"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#send%2COperation%2Cstring%2Cstring"><span class="Identifier">send</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">payload</span> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">;</span> <span class="Identifier">socket</span> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Future</span><span class="Other">[</span><a href="swayipc.html#Compositor"><span class="Identifier">Compositor</span></a><span class="Other">]</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma">
+    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">FutureError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">ReadEnvEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+given an operation, send a payload to a socket; yield the compositor
+
+</dd>
+<a id="recv,Compositor"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#recv%2CCompositor"><span class="Identifier">recv</span></a><span class="Other">(</span><span class="Identifier">comp</span><span class="Other">:</span> <a href="swayipc.html#Compositor"><span class="Identifier">Compositor</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Future</span><span class="Other">[</span><a href="swayipc.html#Receipt"><span class="Identifier">Receipt</span></a><span class="Other">]</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma">
+    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">FutureError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+receive a  message from the compositor asynchronously
+
+</dd>
 <a id="newReply,Operation,JsonNode"></a>
-<dt><pre><span class="Keyword">proc</span> <a href="#newReply%2COperation%2CJsonNode"><span class="Identifier">newReply</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">js</span><span class="Other">:</span> <span class="Identifier">JsonNode</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Reply</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dt><pre><span class="Keyword">proc</span> <a href="#newReply%2COperation%2CJsonNode"><span class="Identifier">newReply</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">js</span><span class="Other">:</span> <span class="Identifier">JsonNode</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Reply</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma">
+    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">JsonKindError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
 
 parse a reply for the given operation using a JsonNode
 
 </dd>
 <a id="newReply,Operation,string"></a>
-<dt><pre><span class="Keyword">proc</span> <a href="#newReply%2COperation%2Cstring"><span class="Identifier">newReply</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">payload</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Reply</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Defect</span><span class="Other">,</span>
-    <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">JsonParsingError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
+<dt><pre><span class="Keyword">proc</span> <a href="#newReply%2COperation%2Cstring"><span class="Identifier">newReply</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">payload</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Reply</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
+    <span class="Identifier">JsonKindError</span><span class="Other">,</span> <span class="Identifier">Defect</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">JsonParsingError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
 
@@ -1356,24 +1382,35 @@ parse a reply for the given operation using json in a string
 
 </dd>
 <a id="newEvent,EventKind,JsonNode"></a>
-<dt><pre><span class="Keyword">proc</span> <a href="#newEvent%2CEventKind%2CJsonNode"><span class="Identifier">newEvent</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#EventKind"><span class="Identifier">EventKind</span></a><span class="Other">;</span> <span class="Identifier">js</span><span class="Other">:</span> <span class="Identifier">JsonNode</span><span class="Other">)</span><span class="Other">:</span> <a href="swayipc.html#Event"><span class="Identifier">Event</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dt><pre><span class="Keyword">proc</span> <a href="#newEvent%2CEventKind%2CJsonNode"><span class="Identifier">newEvent</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#EventKind"><span class="Identifier">EventKind</span></a><span class="Other">;</span> <span class="Identifier">js</span><span class="Other">:</span> <span class="Identifier">JsonNode</span><span class="Other">)</span><span class="Other">:</span> <a href="swayipc.html#Event"><span class="Identifier">Event</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma">
+    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">JsonKindError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
 
 instantiate a new event of the given kind, parsing the json input payload from a string
 
 </dd>
 <a id="newEvent,EventKind,string"></a>
-<dt><pre><span class="Keyword">proc</span> <a href="#newEvent%2CEventKind%2Cstring"><span class="Identifier">newEvent</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#EventKind"><span class="Identifier">EventKind</span></a><span class="Other">;</span> <span class="Identifier">payload</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="swayipc.html#Event"><span class="Identifier">Event</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">Defect</span><span class="Other">,</span>
-    <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">JsonParsingError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
+<dt><pre><span class="Keyword">proc</span> <a href="#newEvent%2CEventKind%2Cstring"><span class="Identifier">newEvent</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="swayipc.html#EventKind"><span class="Identifier">EventKind</span></a><span class="Other">;</span> <span class="Identifier">payload</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <a href="swayipc.html#Event"><span class="Identifier">Event</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">KeyError</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span>
+    <span class="Identifier">JsonKindError</span><span class="Other">,</span> <span class="Identifier">Defect</span><span class="Other">,</span> <span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">JsonParsingError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span>
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadIOEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
 
 parse an event of the given kind using json in a string
 
 </dd>
+<a id="invoke,Compositor,Operation,seq[T][string]"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#invoke%2CCompositor%2COperation%2Cseq%5BT%5D%5Bstring%5D"><span class="Identifier">invoke</span></a><span class="Other">(</span><span class="Identifier">compositor</span><span class="Other">:</span> <a href="swayipc.html#Compositor"><span class="Identifier">Compositor</span></a><span class="Other">;</span> <span class="Identifier">operation</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">args</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Future</span><span class="Other">[</span>
+    <span class="Identifier">Reply</span><span class="Other">]</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">FutureError</span><span class="Other">]</span><span class="Other">,</span>
+            <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+perform an invocation of the given operation asynchronously
+
+</dd>
 <a id="invoke,Compositor,Operation,varargs[string,]"></a>
-<dt><pre><span class="Keyword">proc</span> <a href="#invoke%2CCompositor%2COperation%2Cvarargs%5Bstring%2C%5D"><span class="Identifier">invoke</span></a><span class="Other">(</span><span class="Identifier">compositor</span><span class="Other">:</span> <a href="swayipc.html#Compositor"><span class="Identifier">Compositor</span></a><span class="Other">;</span> <span class="Identifier">operation</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">args</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Other">`</span><span class="Operator">$</span><span class="Other">`</span><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Reply</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma">
-    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dt><pre><span class="Keyword">proc</span> <a href="#invoke%2CCompositor%2COperation%2Cvarargs%5Bstring%2C%5D"><span class="Identifier">invoke</span></a><span class="Other">(</span><span class="Identifier">compositor</span><span class="Other">:</span> <a href="swayipc.html#Compositor"><span class="Identifier">Compositor</span></a><span class="Other">;</span> <span class="Identifier">operation</span><span class="Other">:</span> <a href="swayipc.html#Operation"><span class="Identifier">Operation</span></a><span class="Other">;</span> <span class="Identifier">args</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Other">`</span><span class="Operator">$</span><span class="Other">`</span><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Reply</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span>
+    <span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">FutureError</span><span class="Other">,</span> <span class="Identifier">UnpackError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">IndexError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">,</span> <span class="Identifier">TimeEffect</span><span class="Other">,</span> <span class="Identifier">WriteIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
 
 perform an invocation of the given operation synchronously
@@ -1398,6 +1435,13 @@ produces a sequence of all leaves (child-free containers) in the given tree
 <div class="section" id="15">
 <h1><a class="toc-backref" href="#15">Iterators</a></h1>
 <dl class="item">
+<a id="children.i,TreeReply"></a>
+<dt><pre><span class="Keyword">iterator</span> <a href="#children.i%2CTreeReply"><span class="Identifier">children</span></a><span class="Other">(</span><span class="Identifier">container</span><span class="Other">:</span> <a href="swayipc.html#TreeReply"><span class="Identifier">TreeReply</span></a><span class="Other">)</span><span class="Other">:</span> <a href="swayipc.html#TreeReply"><span class="Identifier">TreeReply</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+yields all child containers of this container, omitting the input
+
+</dd>
 <a id="clientWalk.i,TreeReply"></a>
 <dt><pre><span class="Keyword">iterator</span> <a href="#clientWalk.i%2CTreeReply"><span class="Identifier">clientWalk</span></a><span class="Other">(</span><span class="Identifier">container</span><span class="Other">:</span> <a href="swayipc.html#TreeReply"><span class="Identifier">TreeReply</span></a><span class="Other">)</span><span class="Other">:</span> <a href="swayipc.html#TreeReply"><span class="Identifier">TreeReply</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
@@ -1429,7 +1473,7 @@ natural conversion of receipt payloads into json
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br/>
-        <small>Made with Nim. Generated: 2019-10-20 18:24:15 UTC</small>
+        <small>Made with Nim. Generated: 2019-11-03 15:40:37 UTC</small>
       </div>
     </div>
   </div>

@@ -10,7 +10,9 @@ import strutils
 import bitops
 
 import cligen
-import nesm
+
+when not defined(nimdoc):
+  import nesm
 
 export asyncdispatch
 
@@ -254,10 +256,7 @@ type
 proc newEvent*(kind: EventKind; payload: string): Event
 proc newReply*(kind: Operation; payload: string): Reply
 
-# nesm does the packing and unpacking of our messages and replies.
-# we separate out the header so that we can deserialize it alone,
-# in order to read the length of the subsequent envelope body...
-serializable:
+when defined(nimdoc):
   type
     Header = object
       magic*: array[magic.len, char]
@@ -266,7 +265,21 @@ serializable:
 
     Envelope = object
       header: Header
-      body: string as {size: {}.header.length}
+      body: string
+else:
+  # nesm does the packing and unpacking of our messages and replies.
+  # we separate out the header so that we can deserialize it alone,
+  # in order to read the length of the subsequent envelope body...
+  serializable:
+    type
+      Header = object
+        magic*: array[magic.len, char]
+        length*: int32
+        mtype*: int32
+
+      Envelope = object
+        header: Header
+        body: string as {size: {}.header.length}
 
 # we'll use this to discriminate between message and event replies
 type ReceiptType* = BitsRange[Header.mtype]
@@ -308,10 +321,13 @@ proc send*(kind: Operation; compositor: Compositor; payload = ""):
   var
     ss = newStringStream()
 
-  debug "sending ", $payload
+  when defined(nimdoc):
+    ss.write(msg.body) # noqa 😞
+  else:
+    # serialize the whole message into the stream and send it
+    serialize(msg, ss)
 
-  # serialize the whole message into the stream and send it
-  serialize(msg, ss)
+  debug "sending ", $payload
 
   asyncCheck compositor.socket.send(ss.data)
   result = compositor
@@ -344,8 +360,11 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
   ss.write(data)
   ss.setPosition(0)
 
-  # deserialize it back out so we unpack the length/type
-  let header = Header.deserialize(ss)
+  when not defined(nimdoc):
+    # deserialize it back out so we unpack the length/type
+    let header = Header.deserialize(ss)
+  else:
+    let header = Header()
 
   # read the message body and write it into the stream
   data = await comp.socket.recv(header.length)
@@ -358,8 +377,12 @@ proc recv*(comp: Compositor): Future[Receipt] {.async.} =
 
   # now we are ready to rewind and deserialize the whole message
   ss.setPosition(0)
-  var # we may need to clear a bit
-    msg = Envelope.deserialize(ss)
+  when not defined(nimdoc):
+    var # we may need to clear a bit
+      msg = Envelope.deserialize(ss)
+  else:
+    var msg = Envelope()
+
   debug "received ", msg.body
 
   # if the high bit is set, it's an event
