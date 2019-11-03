@@ -21,8 +21,6 @@ export asyncdispatch
 ##
 ## https://i3wm.org/docs/ipc.html
 ##
-## Sadly, these docs are incomplete due to bugs in `nim doc`.
-##
 
 const
   magic = ['i', '3', '-', 'i', 'p', 'c'] ## prefix for msgs to/from server
