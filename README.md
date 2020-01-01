@@ -1,4 +1,4 @@
-# swayipc
+# swayipc [![Build Status](https://travis-ci.org/disruptek/swayipc.svg?branch=master)](https://travis-ci.org/disruptek/swayipc)
 
 It's like swaymsg (in sway) or i3ipc (in i3) but in native Nim.
 
