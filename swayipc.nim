@@ -284,11 +284,11 @@ type ReceiptType* = BitsRange[Header.mtype]
 
 proc `$`*(event: Event): string =
   ## render an event
-  result = event.repr
+  result = "{" & $event.kind & " event}"
 
 proc `$`*(reply: Reply): string =
   ## render a reply
-  result = reply.repr
+  result = "{" & $reply.kind & " reply}"
 
 proc newEnvelope(kind: Operation; data: string): Envelope =
   ## create a new envelope for sending over the socket
