@@ -124,6 +124,7 @@ type
   TreeReply* = ref object
     id*: int
     name*: string
+    pid*: int
     app_id*: string # for sway
     `type`*: string
     border*: string
@@ -415,6 +416,7 @@ converter toTreeReply(js: JsonNode): TreeReply =
   result.id = js["id"].getInt
   result.name = js["name"].getStr
   result.app_id = js.getOrDefault("app_id").getStr
+  result.pid = js.getOrDefault("pid").getInt
   result.`type` = js["type"].getStr
   result.border = js["border"].getStr
   result.currentBorderWidth = js["current_border_width"].getInt

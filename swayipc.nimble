@@ -1,4 +1,4 @@
-version = "3.1.6"
+version = "3.1.7"
 author = "disruptek"
 description = "IPC interface to sway (or i3) compositors"
 license = "MIT"
