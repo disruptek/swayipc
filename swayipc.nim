@@ -141,6 +141,7 @@ type
     urgent*: bool
     focused*: bool
     sticky*: bool
+    fullscreen_mode*: int
     focus*: seq[int]
     nodes*: seq[TreeReply]
     floating_nodes*: seq[TreeReply]
@@ -251,6 +252,9 @@ type
       tick*: bool
     of Sync:
       sync*: bool
+
+template isFullscreen*(tree: TreeReply): bool =
+  tree.fullscreen_mode == 1
 
 proc newEvent*(kind: EventKind; payload: string): Event
 proc newReply*(kind: Operation; payload: string): Reply
@@ -433,6 +437,7 @@ converter toTreeReply(js: JsonNode): TreeReply =
   result.urgent = js["urgent"].getBool
   result.focused = js["focused"].getBool
   result.sticky = js["sticky"].getBool
+  result.fullscreen_mode = js["fullscreen_mode"].getInt
   result.focus = @[]
   for j in js["focus"]:
     result.focus.add j.getInt
