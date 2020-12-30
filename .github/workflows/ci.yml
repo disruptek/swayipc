@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           cd swayipc
-          nimble --accept develop
+          nimble --accept install
           nimble test
 
       - name: Build docs

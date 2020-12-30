@@ -8,4 +8,4 @@ requires "cligen >= 0.9.40 & < 2.0.0"
 bin = @["swayipc"]
 
 task test, "run unit testes":
-  exec "./swayipc --help"
+  exec "swayipc --help"
