@@ -1,0 +1,64 @@
+RunCommand	swayipc.html#RunCommand	Operation.RunCommand	
+GetWorkspaces	swayipc.html#GetWorkspaces	Operation.GetWorkspaces	
+Subscribe	swayipc.html#Subscribe	Operation.Subscribe	
+GetOutputs	swayipc.html#GetOutputs	Operation.GetOutputs	
+GetTree	swayipc.html#GetTree	Operation.GetTree	
+GetMarks	swayipc.html#GetMarks	Operation.GetMarks	
+GetBarConfig	swayipc.html#GetBarConfig	Operation.GetBarConfig	
+GetVersion	swayipc.html#GetVersion	Operation.GetVersion	
+GetBindingModes	swayipc.html#GetBindingModes	Operation.GetBindingModes	
+GetConfig	swayipc.html#GetConfig	Operation.GetConfig	
+SendTick	swayipc.html#SendTick	Operation.SendTick	
+Sync	swayipc.html#Sync	Operation.Sync	
+Operation	swayipc.html#Operation	swayipc: Operation	
+Workspace	swayipc.html#Workspace	EventKind.Workspace	
+Output	swayipc.html#Output	EventKind.Output	
+Mode	swayipc.html#Mode	EventKind.Mode	
+Window	swayipc.html#Window	EventKind.Window	
+BarConfigUpdate	swayipc.html#BarConfigUpdate	EventKind.BarConfigUpdate	
+Binding	swayipc.html#Binding	EventKind.Binding	
+Shutdown	swayipc.html#Shutdown	EventKind.Shutdown	
+Tick	swayipc.html#Tick	EventKind.Tick	
+EventKind	swayipc.html#EventKind	swayipc: EventKind	
+WorkspaceEvent	swayipc.html#WorkspaceEvent	swayipc: WorkspaceEvent	
+WindowEvent	swayipc.html#WindowEvent	swayipc: WindowEvent	
+BarConfigUpdateEvent	swayipc.html#BarConfigUpdateEvent	swayipc: BarConfigUpdateEvent	
+BindingEvent	swayipc.html#BindingEvent	swayipc: BindingEvent	
+OutputEvent	swayipc.html#OutputEvent	swayipc: OutputEvent	
+ModeEvent	swayipc.html#ModeEvent	swayipc: ModeEvent	
+ShutdownEvent	swayipc.html#ShutdownEvent	swayipc: ShutdownEvent	
+TickEvent	swayipc.html#TickEvent	swayipc: TickEvent	
+Event	swayipc.html#Event	swayipc: Event	
+RunCommandReply	swayipc.html#RunCommandReply	swayipc: RunCommandReply	
+WindowProperties	swayipc.html#WindowProperties	swayipc: WindowProperties	
+TreeReply	swayipc.html#TreeReply	swayipc: TreeReply	
+BarNames	swayipc.html#BarNames	BarConfigReplyKind.BarNames	
+OneBar	swayipc.html#OneBar	BarConfigReplyKind.OneBar	
+BarConfigReplyKind	swayipc.html#BarConfigReplyKind	swayipc: BarConfigReplyKind	
+BarConfigReply	swayipc.html#BarConfigReply	swayipc: BarConfigReply	
+BindingInfo	swayipc.html#BindingInfo	swayipc: BindingInfo	
+Rect	swayipc.html#Rect	swayipc: Rect	
+Compositor	swayipc.html#Compositor	swayipc: Compositor	
+ReplyReceipt	swayipc.html#ReplyReceipt	ReceiptKind.ReplyReceipt	
+EventReceipt	swayipc.html#EventReceipt	ReceiptKind.EventReceipt	
+ReceiptKind	swayipc.html#ReceiptKind	swayipc: ReceiptKind	
+Receipt	swayipc.html#Receipt	swayipc: Receipt	
+isFullscreen	swayipc.html#isFullscreen.t,TreeReply	swayipc: isFullscreen(tree: TreeReply): bool	
+ReceiptType	swayipc.html#ReceiptType	swayipc: ReceiptType	
+`$`	swayipc.html#$,Event	swayipc: `$`(event: Event): string	
+`$`	swayipc.html#$,Reply	swayipc: `$`(reply: Reply): string	
+newCompositor	swayipc.html#newCompositor,string	swayipc: newCompositor(path = &quot;&quot;): Future[Compositor]	
+send	swayipc.html#send,Operation,Compositor,string	swayipc: send(kind: Operation; compositor: Compositor; payload = &quot;&quot;): Future[Compositor]	
+send	swayipc.html#send,Operation,string,string	swayipc: send(kind: Operation; payload = &quot;&quot;; socket = &quot;&quot;): Future[Compositor]	
+recv	swayipc.html#recv,Compositor	swayipc: recv(comp: Compositor): Future[Receipt]	
+toJson	swayipc.html#toJson.c,Receipt	swayipc: toJson(receipt: Receipt): JsonNode	
+newReply	swayipc.html#newReply,Operation,JsonNode	swayipc: newReply(kind: Operation; js: JsonNode): Reply	
+newReply	swayipc.html#newReply,Operation,string	swayipc: newReply(kind: Operation; payload: string): Reply	
+newEvent	swayipc.html#newEvent,EventKind,JsonNode	swayipc: newEvent(kind: EventKind; js: JsonNode): Event	
+newEvent	swayipc.html#newEvent,EventKind,string	swayipc: newEvent(kind: EventKind; payload: string): Event	
+invoke	swayipc.html#invoke,Compositor,Operation,seq[string]	swayipc: invoke(compositor: Compositor; operation: Operation; args: seq[string]): Future[\n    Reply]	
+invoke	swayipc.html#invoke,Compositor,Operation,varargs[string,]	swayipc: invoke(compositor: Compositor; operation: Operation; args: varargs[string, `$`]): Reply	
+hasChildren	swayipc.html#hasChildren,TreeReply	swayipc: hasChildren(container: TreeReply): bool	
+children	swayipc.html#children.i,TreeReply	swayipc: children(container: TreeReply): TreeReply	
+clientWalk	swayipc.html#clientWalk.i,TreeReply	swayipc: clientWalk(container: TreeReply): TreeReply	
+everyClient	swayipc.html#everyClient,TreeReply	swayipc: everyClient(container: TreeReply): seq[TreeReply]	
